@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from random import randint, randrange
 from datetime import timedelta, datetime, timezone
-import threading
+
 def random_date(start, end):
     """
     This function will return a random datetime between two datetime 
@@ -25,11 +25,13 @@ def create_random_date_ranges(ranges_to_create):
     d1 = datetime.strptime("2016-01-01", "%Y-%m-%d")
     d2 = datetime.strptime("2023-12-31", "%Y-%m-%d")
 
-    for i in range(0, ranges_to_create):
+    while len(results) < ranges_to_create:
         sd = random_date(d1, d2)
         start_date_as_str = sd.strftime("%Y-%m-%d")
         days_remaining = datetime.utcnow() - sd
         years_remaining = math.floor(days_remaining.days/365)
+        if years_remaining <= 2:
+            continue
         rand_end_year = randint(int(years_remaining/2), years_remaining)
         end_date = datetime(year=sd.year + rand_end_year, month= randint(1,10), day= randint(1,28))
         end_date_as_str = end_date.strftime("%Y-%m-%d")
@@ -128,16 +130,18 @@ def plot_data(results, final_bnh, final_smas, color_name):
 
     results_series = pd.Series(results)
 
+    transparent_color = list(mcolors.to_rgba(color_name))
+    transparent_color[3] = 0.1
+
     plt.plot(
         results_series.index,
         results_series.values,
         label="SMA Strategy Final Value",
-        color=color_name,
+        color=tuple(transparent_color),
         linewidth=1.5,
     )
 
-    transparent_color = list(mcolors.to_rgba(color_name))
-    transparent_color[3] = 0.4
+
 
     plt.axhline(
         final_bnh,
@@ -146,19 +150,19 @@ def plot_data(results, final_bnh, final_smas, color_name):
         label=f"Buy & Hold Benchmark (${final_bnh:,.0f})",
     )
 
-    plt.annotate(f"${final_bnh:,.0f}", # this is the text
-                 (200,final_bnh), # these are the coordinates to position the label
-                 ha='left', color=color_name) # horizontal alignment can be left, right or center
+    # plt.annotate(f"${final_bnh:,.0f}", # this is the text
+    #              (200,final_bnh), # these are the coordinates to position the label
+    #              ha='left', color=color_name) # horizontal alignment can be left, right or center
 
-    transparent_color_2 = list(mcolors.to_rgba(color_name))
-    transparent_color_2[3] = 0.7
+    # transparent_color_2 = list(mcolors.to_rgba(color_name))
+    # transparent_color_2[3] = 0.7
 
     for i in range(len(final_smas)):
         plt.plot(
             final_smas.index[i],
             final_smas.iloc[i],
             "o",
-            color=tuple(transparent_color_2),
+            color=color_name,
             markersize=8,
         )
 
@@ -259,7 +263,7 @@ if __name__ == "__main__":
 
     #date_array = [("2016-01-01", "2021-12-01")]
 
-    date_array = create_random_date_ranges(200)
+    date_array = create_random_date_ranges(100)
 
     futures = []
 
