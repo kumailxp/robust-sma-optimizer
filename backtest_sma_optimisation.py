@@ -3,61 +3,72 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 
 def plot_ranges(data_range, max_sma):
-    # Plotting the Optimization Results
+
+    color_names = []
+    for name, _ in mcolors.TABLEAU_COLORS.items():
+        color_names.append(name)
+
+    max_colors_len = len(color_names)
+
     plt.figure(figsize=(12, 6))
 
-    for result, final_bnh in data_range:
-        plot_data(result, final_bnh)
-    # plt.title(f'SMA Period Optimization: Final Portfolio Value ({start_date} - {end_date})')
+    for id, (result, final_bnh) in enumerate(data_range):
+        plot_data(result, final_bnh, color_names[id % max_colors_len])
+
     plt.ylabel("Final Portfolio Value (USD)")
     plt.xlabel("SMA Period (Days)")
-    plt.xticks(np.arange(0, max_sma + 1, 25))
+    plt.xticks(np.arange(0, max_sma + 1, 10))
     plt.legend()
     plt.grid(True, which="major", ls="-", alpha=0.3)
     plt.show()
 
 
-def plot_data(results, final_bnh):
+def plot_data(results, final_bnh, color_name):
 
     results_series = pd.Series(results)
-    best_sma_period = results_series.idxmax()
-    best_sma_value = results_series.max()
-    second_largest_element = results_series.nlargest(2)
+    best_smas = results_series.nlargest(3)
     print("-" * 50)
-    print(f"🚀 Best SMA Period: {best_sma_period} days")
-    print(f"💰 Best SMA Final Value: ${best_sma_value:,.2f}")
-    print(f"Comparison to Buy & Hold: {(best_sma_value / final_bnh):.2f}x")
-    print(f"2nd Best SMA {second_largest_element.index[-1]}")
-    print(f"2nd Result ${second_largest_element.iloc[-1]}")
+    print(f"Buy and Hold: ${final_bnh}")
+    print("Best SMAs")
+    for i in range(len(best_smas)):
+        print(f"SMA: {best_smas.index[i]}, ROI: {best_smas.iloc[i]}")
     print("-" * 50)
-
-    two_best_sma_element = results_series.nlargest(3)
 
     plt.plot(
         results_series.index,
         results_series.values,
         label="SMA Strategy Final Value",
-        color="blue",
+        color=color_name,
         linewidth=1.5,
     )
 
+    transparent_color = list(mcolors.to_rgba(color_name))
+    transparent_color[3] = 0.4
+
     plt.axhline(
         final_bnh,
-        color="red",
+        color=tuple(transparent_color),
         linestyle="--",
         label=f"Buy & Hold Benchmark (${final_bnh:,.0f})",
     )
 
-    print(two_best_sma_element)
-    for i in range(len(two_best_sma_element)):
+    plt.annotate(f"${final_bnh:,.0f}", # this is the text
+                 (200,final_bnh), # these are the coordinates to position the label
+                 ha='left', color=color_name) # horizontal alignment can be left, right or center
+
+    transparent_color_2 = list(mcolors.to_rgba(color_name))
+    transparent_color_2[3] = 0.7
+
+    for i in range(len(best_smas)):
         plt.plot(
-            two_best_sma_element.index[i],
-            two_best_sma_element.iloc[i],
+            best_smas.index[i],
+            best_smas.iloc[i],
             "o",
-            color="green",
+            color=tuple(transparent_color_2),
             markersize=8,
         )
 
@@ -72,7 +83,7 @@ def backtest_sma_optimization(start_date, end_date, min_sma, max_sma):
     # Fetch data, starting earlier to ensure rolling mean calculation is stable
     data = yf.download(
         ticker,
-        start="2015-01-01",
+        start=start_date,
         progress=False,
         multi_level_index=False,
         interval="1d",
@@ -142,11 +153,12 @@ def backtest_sma_optimization(start_date, end_date, min_sma, max_sma):
 if __name__ == "__main__":
     min_sma = 1
     max_sma = 200
-    # start_date = "2016-01-01"
-    # end_date = "2021-12-01"
     data_to_plot = []
 
-    date_array = [("2016-01-01", "2021-12-01"), ("2017-06-01", "2023-12-01")]
+    date_array = [("2016-01-01", "2021-12-01"), ("2015-06-01", "2019-12-01"), 
+                  ("2017-06-01", "2021-12-01"), ("2019-01-01", "2023-12-01"),
+                  ("2015-06-01", "2020-06-01"), ("2020-01-01", "2024-06-01"),
+                  ("2021-01-01", "2025-10-01"), ("2018-01-01", "2022-12-01"),]
 
     for s_date, e_date in date_array:
         data_to_plot.append(backtest_sma_optimization(s_date, e_date, min_sma, max_sma))
