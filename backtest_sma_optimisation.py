@@ -5,10 +5,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from random import randint, randrange
 from datetime import timedelta, datetime, timezone
-
+import threading
 def random_date(start, end):
     """
     This function will return a random datetime between two datetime 
@@ -250,17 +251,25 @@ if __name__ == "__main__":
     )
 
 
-    date_array = [("2016-01-01", "2021-12-01"), ("2015-06-01", "2019-12-01"),
-                  ("2017-06-01", "2021-12-01"), ("2019-01-01", "2023-12-01"),
-                  ("2015-06-01", "2020-06-01"), ("2020-01-01", "2024-06-01"),
-                  ("2021-01-01", "2025-10-01"), ("2018-01-01", "2022-12-01"),
-                  ("2019-01-01", "2025-07-01")]
+    # date_array = [("2016-01-01", "2021-12-01"), ("2015-06-01", "2019-12-01"),
+    #               ("2017-06-01", "2021-12-01"), ("2019-01-01", "2023-12-01"),
+    #               ("2015-06-01", "2020-06-01"), ("2020-01-01", "2024-06-01"),
+    #               ("2021-01-01", "2025-10-01"), ("2018-01-01", "2022-12-01"),
+    #               ("2019-01-01", "2025-07-01")]
 
     #date_array = [("2016-01-01", "2021-12-01")]
 
-    date_array = create_random_date_ranges(50)
+    date_array = create_random_date_ranges(200)
 
-    for s_date, e_date in date_array:
-        data_to_plot.append(backtest_sma_optimization(data, s_date, e_date, min_sma, max_sma))
+    futures = []
 
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        for s_date, e_date in date_array:
+            future = executor.submit(backtest_sma_optimization, data, s_date, e_date, min_sma, max_sma)
+            futures.append(future)
+        for future in as_completed(futures):
+            try:
+                data_to_plot.append(future.result())
+            except:
+                pass
     plot_ranges(data_to_plot, max_sma)
