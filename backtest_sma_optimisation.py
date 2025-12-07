@@ -73,21 +73,11 @@ def plot_data(results, final_bnh, color_name):
         )
 
 
-def backtest_sma_optimization(start_date, end_date, min_sma, max_sma):
+def backtest_sma_optimization(data, start_date, end_date, min_sma, max_sma):
     # 1. Configuration
-    ticker = "BTC-USD"
     initial_capital = 1000
 
     print(f"Fetching data for {ticker}...")
-
-    # Fetch data, starting earlier to ensure rolling mean calculation is stable
-    data = yf.download(
-        ticker,
-        start=start_date,
-        progress=False,
-        multi_level_index=False,
-        interval="1d",
-    )
 
     if len(data) == 0:
         print("Error: No data found.")
@@ -96,13 +86,15 @@ def backtest_sma_optimization(start_date, end_date, min_sma, max_sma):
     # Prepare results storage
     results = {}
 
+    data_filtered = data[(data.index >= start_date) & (data.index <= end_date)].copy()
+
     # Calculate Buy & Hold returns once on the full dataset
-    data["BTC_Daily_Pct"] = data["Close"].pct_change()
-    data["Buy_Hold_Value"] = initial_capital * (1 + data["BTC_Daily_Pct"]).cumprod()
+    data_filtered["BTC_Daily_Pct"] = data_filtered["Close"].pct_change()
+    data_filtered["Buy_Hold_Value"] = initial_capital * (1 + data_filtered["BTC_Daily_Pct"]).cumprod()
 
     # Filter the main DataFrame for the simulation period
     # This serves as the clean template for the loop
-    data_filtered = data[(data.index >= start_date) & (data.index <= end_date)].copy()
+
 
     final_bnh = data_filtered["Buy_Hold_Value"].iloc[-1]
 
@@ -155,12 +147,26 @@ if __name__ == "__main__":
     max_sma = 200
     data_to_plot = []
 
-    date_array = [("2016-01-01", "2021-12-01"), ("2015-06-01", "2019-12-01"), 
+    # 1. Configuration
+    ticker = "BTC-USD"
+    print(f"Fetching data for {ticker}...")
+
+    # Fetch data, starting earlier to ensure rolling mean calculation is stable
+    data = yf.download(
+        ticker,
+        start="2015-01-01",
+        progress=False,
+        multi_level_index=False,
+        interval="1d",
+    )
+
+
+    date_array = [("2016-01-01", "2021-12-01"), ("2015-06-01", "2019-12-01"),
                   ("2017-06-01", "2021-12-01"), ("2019-01-01", "2023-12-01"),
                   ("2015-06-01", "2020-06-01"), ("2020-01-01", "2024-06-01"),
                   ("2021-01-01", "2025-10-01"), ("2018-01-01", "2022-12-01"),]
 
     for s_date, e_date in date_array:
-        data_to_plot.append(backtest_sma_optimization(s_date, e_date, min_sma, max_sma))
+        data_to_plot.append(backtest_sma_optimization(data, s_date, e_date, min_sma, max_sma))
 
     plot_ranges(data_to_plot, max_sma)
