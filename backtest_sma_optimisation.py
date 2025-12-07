@@ -1,9 +1,78 @@
 #!/usr/bin/env python3
+import math
 import yfinance as yf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+
+from random import randint, randrange
+from datetime import timedelta, datetime, timezone
+
+def random_date(start, end):
+    """
+    This function will return a random datetime between two datetime 
+    objects.
+    """
+    delta = end - start
+    int_delta = (delta.days * 24 * 60 * 60) + delta.seconds
+    random_second = randrange(int_delta)
+    return start + timedelta(seconds=random_second)
+
+def create_random_date_ranges(ranges_to_create):
+    results = []
+    d1 = datetime.strptime("2016-01-01", "%Y-%m-%d")
+    d2 = datetime.strptime("2023-12-31", "%Y-%m-%d")
+
+    for i in range(0, ranges_to_create):
+        sd = random_date(d1, d2)
+        start_date_as_str = sd.strftime("%Y-%m-%d")
+        days_remaining = datetime.utcnow() - sd
+        years_remaining = math.floor(days_remaining.days/365)
+        rand_end_year = randint(int(years_remaining/2), years_remaining)
+        end_date = datetime(year=sd.year + rand_end_year, month= randint(1,10), day= randint(1,28))
+        end_date_as_str = end_date.strftime("%Y-%m-%d")
+        print(f"start date: {start_date_as_str}, end_date: {end_date_as_str}")
+        results.append((start_date_as_str, end_date_as_str))
+    return results
+
+
+def group_nearby_values(data_list, max_gap):
+    """
+    Finds groups of nearby values in a list.
+
+    Args:
+        data_list (list): The list of numerical values.
+        max_gap (float): The maximum difference between two adjacent 
+                         values to be considered in the same group.
+
+    Returns:
+        list: A list of lists, where each inner list is a group.
+    """
+    if not data_list:
+        return []
+
+    # 1. Sort the list (crucial step for grouping nearby values)
+    sorted_list = sorted(data_list)
+    
+    # Initialize the list of groups and the first group
+    groups = []
+    current_group = [sorted_list[0]]
+
+    # 2. Iterate and group
+    for i in range(1, len(sorted_list)):
+        # Check if the gap to the previous value is within the threshold
+        if sorted_list[i] - sorted_list[i-1] <= max_gap:
+            current_group.append(sorted_list[i])
+        else:
+            # The gap is too large; start a new group
+            groups.append(current_group)
+            current_group = [sorted_list[i]]
+
+    # 3. Add the last group
+    groups.append(current_group)
+    
+    return groups
 
 
 def plot_ranges(data_range, max_sma):
@@ -16,27 +85,47 @@ def plot_ranges(data_range, max_sma):
 
     plt.figure(figsize=(12, 6))
 
-    for id, (result, final_bnh) in enumerate(data_range):
-        plot_data(result, final_bnh, color_names[id % max_colors_len])
+    for id, (sma_graph, final_bnh) in enumerate(data_range):
+        final_sma = get_best_moving_avgs(sma_graph, final_bnh)
+        plot_data(sma_graph, final_bnh, final_sma, color_names[id % max_colors_len])
 
     plt.ylabel("Final Portfolio Value (USD)")
     plt.xlabel("SMA Period (Days)")
     plt.xticks(np.arange(0, max_sma + 1, 10))
-    plt.legend()
+    #plt.legend()
     plt.grid(True, which="major", ls="-", alpha=0.3)
     plt.show()
 
 
-def plot_data(results, final_bnh, color_name):
+
+def get_best_moving_avgs(results, final_bnh):
+    results_series = pd.Series(results)
+    best_smas = results_series.nlargest(20)
+    sma_indicies = [int(i) for i in best_smas.index.values if i > 10]
+    sma_indicies = sorted(sma_indicies)
+    clustered_results = group_nearby_values(sma_indicies, 10)
+
+    final_smas = pd.Series()
+    for v in clustered_results:
+        r = list(best_smas[v].values)
+        # print(f"max ROI is ${max(r)}")
+        for sma, roi in best_smas.items():
+            if roi == max(r):
+                # print("at SMA", sma)
+                final_smas[sma] = roi
+                break
+
+    print("-" * 50)
+    print(f"HODL: ${final_bnh:,.2f}")
+    print("Best SMAs")
+    for i in range(len(final_smas)):
+        print(f"SMA: {final_smas.index[i]}, ROI: ${final_smas.iloc[i]:,.2f}")
+    print("-" * 50)
+    return final_smas
+
+def plot_data(results, final_bnh, final_smas, color_name):
 
     results_series = pd.Series(results)
-    best_smas = results_series.nlargest(3)
-    print("-" * 50)
-    print(f"Buy and Hold: ${final_bnh}")
-    print("Best SMAs")
-    for i in range(len(best_smas)):
-        print(f"SMA: {best_smas.index[i]}, ROI: {best_smas.iloc[i]}")
-    print("-" * 50)
 
     plt.plot(
         results_series.index,
@@ -63,10 +152,10 @@ def plot_data(results, final_bnh, color_name):
     transparent_color_2 = list(mcolors.to_rgba(color_name))
     transparent_color_2[3] = 0.7
 
-    for i in range(len(best_smas)):
+    for i in range(len(final_smas)):
         plt.plot(
-            best_smas.index[i],
-            best_smas.iloc[i],
+            final_smas.index[i],
+            final_smas.iloc[i],
             "o",
             color=tuple(transparent_color_2),
             markersize=8,
@@ -164,7 +253,12 @@ if __name__ == "__main__":
     date_array = [("2016-01-01", "2021-12-01"), ("2015-06-01", "2019-12-01"),
                   ("2017-06-01", "2021-12-01"), ("2019-01-01", "2023-12-01"),
                   ("2015-06-01", "2020-06-01"), ("2020-01-01", "2024-06-01"),
-                  ("2021-01-01", "2025-10-01"), ("2018-01-01", "2022-12-01"),]
+                  ("2021-01-01", "2025-10-01"), ("2018-01-01", "2022-12-01"),
+                  ("2019-01-01", "2025-07-01")]
+
+    #date_array = [("2016-01-01", "2021-12-01")]
+
+    date_array = create_random_date_ranges(50)
 
     for s_date, e_date in date_array:
         data_to_plot.append(backtest_sma_optimization(data, s_date, e_date, min_sma, max_sma))
