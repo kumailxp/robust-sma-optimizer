@@ -93,6 +93,7 @@ def plot_ranges(data_range, max_sma):
 
     plt.figure(figsize=(12, 6))
 
+    list_of_all_smas = []
     final_smas_data: pd.Series[Any] = []
     for id, (sma_graph, final_bnh, start_date, end_date) in enumerate(data_range):
         plot_data(sma_graph, final_bnh, color_names[id % max_colors_len])
@@ -101,6 +102,14 @@ def plot_ranges(data_range, max_sma):
 
     for id, final_sma in enumerate(final_smas_data):
         plot_best_sma(final_sma, color_names[id % max_colors_len])
+
+    for s in final_smas_data:
+        list_of_all_smas.extend([i for i in s.index])
+
+    list_of_all_smas = sorted(set(list_of_all_smas))
+    clustered_results = group_nearby_values(list_of_all_smas, 10)
+    print("close sma clustered together:")
+    print(clustered_results)
 
     plt.ylabel("Final Portfolio Value (USD)")
     plt.xlabel("SMA Period (Days)")
