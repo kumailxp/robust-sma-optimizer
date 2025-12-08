@@ -8,11 +8,12 @@ import matplotlib.colors as mcolors
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from random import randint, randrange
-from datetime import timedelta, datetime, timezone
+from datetime import timedelta, datetime
+
 
 def random_date(start, end):
     """
-    This function will return a random datetime between two datetime 
+    This function will return a random datetime between two datetime
     objects.
     """
     delta = end - start
@@ -20,20 +21,23 @@ def random_date(start, end):
     random_second = randrange(int_delta)
     return start + timedelta(seconds=random_second)
 
-def create_random_date_ranges(ranges_to_create):
+
+def create_random_date_ranges(minimum_start_date, ranges_to_create):
     results = []
-    d1 = datetime.strptime("2016-01-01", "%Y-%m-%d")
+    d1 = datetime.strptime(minimum_start_date, "%Y-%m-%d")
     d2 = datetime.strptime("2023-12-31", "%Y-%m-%d")
 
     while len(results) < ranges_to_create:
         sd = random_date(d1, d2)
         start_date_as_str = sd.strftime("%Y-%m-%d")
         days_remaining = datetime.utcnow() - sd
-        years_remaining = math.floor(days_remaining.days/365)
+        years_remaining = math.floor(days_remaining.days / 365)
         if years_remaining <= 2:
             continue
-        rand_end_year = randint(int(years_remaining/2), years_remaining)
-        end_date = datetime(year=sd.year + rand_end_year, month= randint(1,10), day= randint(1,28))
+        rand_end_year = randint(int(years_remaining / 2), years_remaining)
+        end_date = datetime(
+            year=sd.year + rand_end_year, month=randint(1, 10), day=randint(1, 28)
+        )
         end_date_as_str = end_date.strftime("%Y-%m-%d")
         print(f"start date: {start_date_as_str}, end_date: {end_date_as_str}")
         results.append((start_date_as_str, end_date_as_str))
@@ -46,7 +50,7 @@ def group_nearby_values(data_list, max_gap):
 
     Args:
         data_list (list): The list of numerical values.
-        max_gap (float): The maximum difference between two adjacent 
+        max_gap (float): The maximum difference between two adjacent
                          values to be considered in the same group.
 
     Returns:
@@ -57,7 +61,7 @@ def group_nearby_values(data_list, max_gap):
 
     # 1. Sort the list (crucial step for grouping nearby values)
     sorted_list = sorted(data_list)
-    
+
     # Initialize the list of groups and the first group
     groups = []
     current_group = [sorted_list[0]]
@@ -65,7 +69,7 @@ def group_nearby_values(data_list, max_gap):
     # 2. Iterate and group
     for i in range(1, len(sorted_list)):
         # Check if the gap to the previous value is within the threshold
-        if sorted_list[i] - sorted_list[i-1] <= max_gap:
+        if sorted_list[i] - sorted_list[i - 1] <= max_gap:
             current_group.append(sorted_list[i])
         else:
             # The gap is too large; start a new group
@@ -74,7 +78,7 @@ def group_nearby_values(data_list, max_gap):
 
     # 3. Add the last group
     groups.append(current_group)
-    
+
     return groups
 
 
@@ -88,20 +92,19 @@ def plot_ranges(data_range, max_sma):
 
     plt.figure(figsize=(12, 6))
 
-    for id, (sma_graph, final_bnh) in enumerate(data_range):
-        final_sma = get_best_moving_avgs(sma_graph, final_bnh)
+    for id, (sma_graph, final_bnh, start_date, end_date) in enumerate(data_range):
+        final_sma = get_best_moving_avgs(sma_graph, final_bnh, start_date, end_date)
         plot_data(sma_graph, final_bnh, final_sma, color_names[id % max_colors_len])
 
     plt.ylabel("Final Portfolio Value (USD)")
     plt.xlabel("SMA Period (Days)")
     plt.xticks(np.arange(0, max_sma + 1, 10))
-    #plt.legend()
+    # plt.legend()
     plt.grid(True, which="major", ls="-", alpha=0.3)
     plt.show()
 
 
-
-def get_best_moving_avgs(results, final_bnh):
+def get_best_moving_avgs(results, final_bnh, start_date, end_date):
     results_series = pd.Series(results)
     best_smas = results_series.nlargest(20)
     sma_indicies = [int(i) for i in best_smas.index.values if i > 10]
@@ -111,20 +114,20 @@ def get_best_moving_avgs(results, final_bnh):
     final_smas = pd.Series()
     for v in clustered_results:
         r = list(best_smas[v].values)
-        # print(f"max ROI is ${max(r)}")
         for sma, roi in best_smas.items():
-            if roi == max(r):
-                # print("at SMA", sma)
+            if roi == max(r) and roi / final_bnh > 1.1:
                 final_smas[sma] = roi
                 break
 
     print("-" * 50)
-    print(f"HODL: ${final_bnh:,.2f}")
-    print("Best SMAs")
+    print(f"HODL: ${final_bnh:,.2f} from {start_date} to {end_date}")
     for i in range(len(final_smas)):
-        print(f"SMA: {final_smas.index[i]}, ROI: ${final_smas.iloc[i]:,.2f}")
+        print(
+            f"Good SMA: {final_smas.index[i]}, ROI: ${final_smas.iloc[i]:,.2f}, Ratio (roi/hodl): {final_smas.iloc[i]/final_bnh:.2f}"
+        )
     print("-" * 50)
     return final_smas
+
 
 def plot_data(results, final_bnh, final_smas, color_name):
 
@@ -140,8 +143,6 @@ def plot_data(results, final_bnh, final_smas, color_name):
         color=tuple(transparent_color),
         linewidth=1.5,
     )
-
-
 
     plt.axhline(
         final_bnh,
@@ -184,11 +185,9 @@ def backtest_sma_optimization(data, start_date, end_date, min_sma, max_sma):
 
     # Calculate Buy & Hold returns once on the full dataset
     data_filtered["BTC_Daily_Pct"] = data_filtered["Close"].pct_change()
-    data_filtered["Buy_Hold_Value"] = initial_capital * (1 + data_filtered["BTC_Daily_Pct"]).cumprod()
-
-    # Filter the main DataFrame for the simulation period
-    # This serves as the clean template for the loop
-
+    data_filtered["Buy_Hold_Value"] = (
+        initial_capital * (1 + data_filtered["BTC_Daily_Pct"]).cumprod()
+    )
 
     final_bnh = data_filtered["Buy_Hold_Value"].iloc[-1]
 
@@ -203,8 +202,6 @@ def backtest_sma_optimization(data, start_date, end_date, min_sma, max_sma):
         temp_sma = data["Close"].rolling(window=sma_period).mean()
 
         # Create the working DataFrame for this iteration.
-        # 🎯 THE FIX: Copy the *entire* filtered template.
-        # We only need 'Close' and 'BTC_Daily_Pct' going forward.
         df = data_filtered.copy()
 
         # Assign the calculated SMA to the working DataFrame 'df'.
@@ -230,10 +227,10 @@ def backtest_sma_optimization(data, start_date, end_date, min_sma, max_sma):
             final_strat_value = df["Strategy_Value"].iloc[-1]
             results[sma_period] = final_strat_value
 
-        if sma_period % 20 == 0:
+        if sma_period % 100 == 0:
             print(f"Completed SMA {sma_period}...")
 
-    return (results, final_bnh)
+    return (results, final_bnh, start_date, end_date)
 
 
 if __name__ == "__main__":
@@ -245,31 +242,26 @@ if __name__ == "__main__":
     ticker = "BTC-USD"
     print(f"Fetching data for {ticker}...")
 
+    minimum_start_date = "2016-01-01"
+
     # Fetch data, starting earlier to ensure rolling mean calculation is stable
     data = yf.download(
         ticker,
-        start="2015-01-01",
+        start=minimum_start_date,
         progress=False,
         multi_level_index=False,
         interval="1d",
     )
 
-
-    # date_array = [("2016-01-01", "2021-12-01"), ("2015-06-01", "2019-12-01"),
-    #               ("2017-06-01", "2021-12-01"), ("2019-01-01", "2023-12-01"),
-    #               ("2015-06-01", "2020-06-01"), ("2020-01-01", "2024-06-01"),
-    #               ("2021-01-01", "2025-10-01"), ("2018-01-01", "2022-12-01"),
-    #               ("2019-01-01", "2025-07-01")]
-
-    #date_array = [("2016-01-01", "2021-12-01")]
-
-    date_array = create_random_date_ranges(100)
+    date_array = create_random_date_ranges(minimum_start_date, 100)
 
     futures = []
 
     with ThreadPoolExecutor(max_workers=20) as executor:
         for s_date, e_date in date_array:
-            future = executor.submit(backtest_sma_optimization, data, s_date, e_date, min_sma, max_sma)
+            future = executor.submit(
+                backtest_sma_optimization, data, s_date, e_date, min_sma, max_sma
+            )
             futures.append(future)
         for future in as_completed(futures):
             try:
