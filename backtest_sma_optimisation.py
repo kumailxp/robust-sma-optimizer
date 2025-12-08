@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import math
+from typing import Any
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -92,9 +93,14 @@ def plot_ranges(data_range, max_sma):
 
     plt.figure(figsize=(12, 6))
 
+    final_smas_data: pd.Series[Any] = []
     for id, (sma_graph, final_bnh, start_date, end_date) in enumerate(data_range):
+        plot_data(sma_graph, final_bnh, color_names[id % max_colors_len])
         final_sma = get_best_moving_avgs(sma_graph, final_bnh, start_date, end_date)
-        plot_data(sma_graph, final_bnh, final_sma, color_names[id % max_colors_len])
+        final_smas_data.append(final_sma)
+
+    for id, final_sma in enumerate(final_smas_data):
+        plot_best_sma(final_sma, color_names[id % max_colors_len])
 
     plt.ylabel("Final Portfolio Value (USD)")
     plt.xlabel("SMA Period (Days)")
@@ -129,7 +135,24 @@ def get_best_moving_avgs(results, final_bnh, start_date, end_date):
     return final_smas
 
 
-def plot_data(results, final_bnh, final_smas, color_name):
+def plot_best_sma(final_smas, color_name):
+    # plt.annotate(f"${final_bnh:,.0f}", # this is the text
+    #              (200,final_bnh), # these are the coordinates to position the label
+    #              ha='left', color=color_name) # horizontal alignment can be left, right or center
+
+    # transparent_color_2 = list(mcolors.to_rgba(color_name))
+    # transparent_color_2[3] = 0.7
+
+    for i in range(len(final_smas)):
+        plt.plot(
+            final_smas.index[i],
+            final_smas.iloc[i],
+            "o",
+            color=color_name,
+            markersize=8,
+        )
+
+def plot_data(results, final_bnh, color_name):
 
     results_series = pd.Series(results)
 
@@ -150,22 +173,6 @@ def plot_data(results, final_bnh, final_smas, color_name):
         linestyle="--",
         label=f"Buy & Hold Benchmark (${final_bnh:,.0f})",
     )
-
-    # plt.annotate(f"${final_bnh:,.0f}", # this is the text
-    #              (200,final_bnh), # these are the coordinates to position the label
-    #              ha='left', color=color_name) # horizontal alignment can be left, right or center
-
-    # transparent_color_2 = list(mcolors.to_rgba(color_name))
-    # transparent_color_2[3] = 0.7
-
-    for i in range(len(final_smas)):
-        plt.plot(
-            final_smas.index[i],
-            final_smas.iloc[i],
-            "o",
-            color=color_name,
-            markersize=8,
-        )
 
 
 def backtest_sma_optimization(data, start_date, end_date, min_sma, max_sma):
