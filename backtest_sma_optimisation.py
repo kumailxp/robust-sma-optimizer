@@ -106,10 +106,11 @@ def plot_ranges(data_range, max_sma):
     for s in final_smas_data:
         list_of_all_smas.extend([i for i in s.index])
 
-    list_of_all_smas = sorted(set(list_of_all_smas))
+    list_of_all_smas = sorted(list_of_all_smas)
     clustered_results = group_nearby_values(list_of_all_smas, 10)
-    print("close sma clustered together:")
-    print(clustered_results)
+    print("closly clustered smas:")
+    for g in clustered_results:
+        print(f"len: {len(g)}, data: {g}")
 
     plt.ylabel("Final Portfolio Value (USD)")
     plt.xlabel("SMA Period (Days)")
