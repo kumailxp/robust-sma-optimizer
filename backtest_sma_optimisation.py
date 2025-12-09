@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from random import randint, randrange
 from datetime import timedelta, datetime
-
+from backtest_plot_sma_strategy_result import backtest_stock_sma_strategy
 
 def random_date(start, end):
     """
@@ -118,7 +118,7 @@ def plot_ranges(data_range, max_sma, ticker):
     plt.xticks(np.arange(0, max_sma + 1, 10))
     # plt.legend()
     plt.grid(True, which="major", ls="-", alpha=0.3)
-    plt.show()
+    plt.draw()
 
 
 def get_best_moving_avgs(results, final_bnh, start_date, end_date):
@@ -257,7 +257,7 @@ if __name__ == "__main__":
     data_to_plot = []
 
     # 1. Configuration
-    ticker = "CAT"
+    ticker = "SAP"
     print(f"Fetching data for {ticker}...")
 
     minimum_start_date = "2014-01-01"
@@ -287,3 +287,4 @@ if __name__ == "__main__":
             except:
                 pass
     plot_ranges(data_to_plot, max_sma, ticker)
+    backtest_stock_sma_strategy(ticker, "2021-01-01", "2025-06-01", 105)

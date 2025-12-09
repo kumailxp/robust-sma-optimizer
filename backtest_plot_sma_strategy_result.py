@@ -4,13 +4,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def backtest_stock_sma_strategy():
+def backtest_stock_sma_strategy(ticker, start_date, end_date, sma_period):
     # 1. Configuration
-    start_date = "2021-01-01"
-    end_date = "2025-06-01"
-    ticker = "SAP"
     initial_capital = 1000  # Starting with $1,000
-    sma_period = 105
 
     print(f"Fetching data for {ticker}...")
     
@@ -96,4 +92,4 @@ def backtest_stock_sma_strategy():
     plt.show()
 
 if __name__ == "__main__":
-    backtest_stock_sma_strategy()
+    backtest_stock_sma_strategy("SAP", "2021-01-01", "2025-06-01", 105)
