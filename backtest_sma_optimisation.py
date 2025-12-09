@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import math
+import os
 from typing import Any
 import yfinance as yf
 import pandas as pd
@@ -82,8 +83,10 @@ def group_nearby_values(data_list, max_gap):
 
     return groups
 
+def most_frequent(List):
+    return max(set(List), key=List.count)
 
-def plot_ranges(data_range, max_sma, ticker):
+def plot_ranges(data_range, max_sma, ticker, folder_name):
 
     color_names = []
     for name, _ in mcolors.TABLEAU_COLORS.items():
@@ -109,8 +112,16 @@ def plot_ranges(data_range, max_sma, ticker):
     list_of_all_smas = sorted(list_of_all_smas)
     clustered_results = group_nearby_values(list_of_all_smas, 10)
     print("closly clustered smas:")
+    last_longest_len = 0
+    best_cluster = None
+    best_of_all_sma = None
     for g in clustered_results:
+        if len(g) > last_longest_len:
+            best_cluster = g
         print(f"len: {len(g)}, data: {g}")
+
+    if best_cluster:
+        best_of_all_sma = most_frequent(best_cluster)
 
     plt.title(f"Good SMAs for {ticker}")
     plt.ylabel("Final Portfolio Value (USD)")
@@ -118,7 +129,12 @@ def plot_ranges(data_range, max_sma, ticker):
     plt.xticks(np.arange(0, max_sma + 1, 10))
     # plt.legend()
     plt.grid(True, which="major", ls="-", alpha=0.3)
-    plt.draw()
+    filename = f"best_smas_{ticker}.png"
+    save_path = os.path.join(folder_name, filename) # Joins folder_name and filename reliably
+    plt.savefig(save_path, format='png', dpi=300, bbox_inches='tight')
+    plt.close()
+    return best_of_all_sma
+    #plt.draw()
 
 
 def get_best_moving_avgs(results, final_bnh, start_date, end_date):
@@ -251,7 +267,7 @@ def backtest_sma_optimization(data, start_date, end_date, min_sma, max_sma):
     return (results, final_bnh, start_date, end_date)
 
 
-if __name__ == "__main__":
+def plot_all(ticker, folder_name):
     min_sma = 1
     max_sma = 200
     data_to_plot = []
@@ -261,7 +277,6 @@ if __name__ == "__main__":
     print(f"Fetching data for {ticker}...")
 
     minimum_start_date = "2014-01-01"
-
     # Fetch data, starting earlier to ensure rolling mean calculation is stable
     data = yf.download(
         ticker,
@@ -270,11 +285,8 @@ if __name__ == "__main__":
         multi_level_index=False,
         interval="1d",
     )
-
     date_array = create_random_date_ranges(minimum_start_date, 50)
-
     futures = []
-
     with ThreadPoolExecutor(max_workers=20) as executor:
         for s_date, e_date in date_array:
             future = executor.submit(
@@ -286,5 +298,16 @@ if __name__ == "__main__":
                 data_to_plot.append(future.result())
             except:
                 pass
-    plot_ranges(data_to_plot, max_sma, ticker)
-    backtest_stock_sma_strategy(ticker, "2021-01-01", "2025-06-01", 105)
+    b = plot_ranges(data_to_plot, max_sma, ticker, f"{folder_name}/best_smas")
+    print(f"Best of all SMAs: {b}")
+    if b:
+        backtest_stock_sma_strategy(ticker, "2021-01-01", "2025-06-01", b, f"{folder_name}/results")
+
+if __name__ == "__main__":
+
+    folder_name = "my_plots"
+    os.makedirs(f"{folder_name}/best_smas", exist_ok=True)
+    os.makedirs(f"{folder_name}/results", exist_ok=True)
+
+    ticker = "SAP"
+    plot_all(ticker, folder_name)

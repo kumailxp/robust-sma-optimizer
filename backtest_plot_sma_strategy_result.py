@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
+import os
 import yfinance as yf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def backtest_stock_sma_strategy(ticker, start_date, end_date, sma_period):
+def backtest_stock_sma_strategy(ticker, start_date, end_date, sma_period, folder_name):
     # 1. Configuration
     initial_capital = 1000  # Starting with $1,000
 
@@ -89,7 +90,13 @@ def backtest_stock_sma_strategy(ticker, start_date, end_date, sma_period):
     from matplotlib.ticker import ScalarFormatter
     plt.gca().yaxis.set_major_formatter(ScalarFormatter())
     
-    plt.show()
+    # plt.show()
+    filename = f"sma_result_for_{ticker}.png"
+    save_path = os.path.join(folder_name, filename) # Joins folder_name and filename reliably
+    plt.savefig(save_path, format='png', dpi=300, bbox_inches='tight')
+    plt.close()
 
 if __name__ == "__main__":
-    backtest_stock_sma_strategy("SAP", "2021-01-01", "2025-06-01", 105)
+    folder_name = 'my_plots/results'
+    os.makedirs(folder_name, exist_ok=True)
+    backtest_stock_sma_strategy("SAP", "2021-01-01", "2025-06-01", 105, folder_name)
