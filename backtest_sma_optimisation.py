@@ -83,7 +83,7 @@ def group_nearby_values(data_list, max_gap):
     return groups
 
 
-def plot_ranges(data_range, max_sma):
+def plot_ranges(data_range, max_sma, ticker):
 
     color_names = []
     for name, _ in mcolors.TABLEAU_COLORS.items():
@@ -112,6 +112,7 @@ def plot_ranges(data_range, max_sma):
     for g in clustered_results:
         print(f"len: {len(g)}, data: {g}")
 
+    plt.title(f"Good SMAs for {ticker}")
     plt.ylabel("Final Portfolio Value (USD)")
     plt.xlabel("SMA Period (Days)")
     plt.xticks(np.arange(0, max_sma + 1, 10))
@@ -256,10 +257,10 @@ if __name__ == "__main__":
     data_to_plot = []
 
     # 1. Configuration
-    ticker = "BTC-USD"
+    ticker = "CAT"
     print(f"Fetching data for {ticker}...")
 
-    minimum_start_date = "2016-01-01"
+    minimum_start_date = "2014-01-01"
 
     # Fetch data, starting earlier to ensure rolling mean calculation is stable
     data = yf.download(
@@ -270,7 +271,7 @@ if __name__ == "__main__":
         interval="1d",
     )
 
-    date_array = create_random_date_ranges(minimum_start_date, 100)
+    date_array = create_random_date_ranges(minimum_start_date, 50)
 
     futures = []
 
@@ -285,4 +286,4 @@ if __name__ == "__main__":
                 data_to_plot.append(future.result())
             except:
                 pass
-    plot_ranges(data_to_plot, max_sma)
+    plot_ranges(data_to_plot, max_sma, ticker)

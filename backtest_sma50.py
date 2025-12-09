@@ -4,18 +4,18 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def backtest_btc_sma_strategy():
+def backtest_stock_sma_strategy():
     # 1. Configuration
-    start_date = "2016-01-01"
-    end_date = "2024-12-01"
-    ticker = "BTC-USD"
+    start_date = "2021-01-01"
+    end_date = "2025-06-01"
+    ticker = "SAP"
     initial_capital = 1000  # Starting with $1,000
-    sma_period = 44
+    sma_period = 105
 
     print(f"Fetching data for {ticker}...")
     
     # We fetch data starting a few months early to allow the SMA calculation to stabilize before 2016
-    data = yf.download(ticker, start="2015-09-01", progress=False)
+    data = yf.download(ticker, start=start_date, progress=False)
 
     # Check if data was retrieved successfully
     if len(data) == 0:
@@ -29,7 +29,7 @@ def backtest_btc_sma_strategy():
     # 2. Calculate Indicators
     data['SMA_X'] = data['Close'].rolling(window=sma_period).mean()
 
-    # 3. Filter data to start exactly from Jan 1, 2016
+    # 3. Filter data betwen start and end
     data = data[(data.index >= start_date) & (data.index <= end_date)].copy()
 
     # 4. Define the Strategy Logic
@@ -45,16 +45,16 @@ def backtest_btc_sma_strategy():
 
     # 6. Calculate Returns
     # Daily percentage change of Bitcoin price
-    data['BTC_Daily_Pct'] = data['Close'].pct_change()
+    data['Stock_Daily_Pct'] = data['Close'].pct_change()
     
     # Strategy return: 
-    # If Position is 1, we get the BTC return. 
+    # If Position is 1, we get the stock return. 
     # If Position is 0, we get 0% return (Cash).
-    data['Strategy_Daily_Pct'] = data['Position'] * data['BTC_Daily_Pct']
+    data['Strategy_Daily_Pct'] = data['Position'] * data['Stock_Daily_Pct']
 
     # 7. Calculate Cumulative Portfolio Value
     # Calculate cumulative product to see value growth over time
-    data['Buy_Hold_Value'] = initial_capital * (1 + data['BTC_Daily_Pct']).cumprod()
+    data['Buy_Hold_Value'] = initial_capital * (1 + data['Stock_Daily_Pct']).cumprod()
     data['Strategy_Value'] = initial_capital * (1 + data['Strategy_Daily_Pct']).cumprod()
 
     # Handle NaNs created by shifting/rolling
@@ -77,13 +77,13 @@ def backtest_btc_sma_strategy():
     # 9. Plotting
     plt.figure(figsize=(12, 6))
     
-    # Using Log Scale because BTC growth is exponential
+    # Using Log Scale because growth might be exponential
     # Without Log scale, the 2016-2020 price action would look like a flat line
-    plt.plot(data.index, data['Buy_Hold_Value'], label='Buy & Hold (BTC)', color='gray', alpha=0.6)
+    plt.plot(data.index, data['Buy_Hold_Value'], label='Buy & Hold', color='gray', alpha=0.6)
     plt.plot(data.index, data['Strategy_Value'], label=f'SMA {sma_period} Strategy', color='green', linewidth=1.5)
 
     plt.yscale('log')
-    plt.title(f'Bitcoin: Buy & Hold vs SMA({sma_period}) Strategy ({start_date} - {end_date})')
+    plt.title(f'{ticker}: Buy & Hold vs SMA({sma_period}) Strategy ({start_date} - {end_date})')
     plt.ylabel('Portfolio Value (USD) - Log Scale')
     plt.xlabel('Year')
     plt.legend()
@@ -96,4 +96,4 @@ def backtest_btc_sma_strategy():
     plt.show()
 
 if __name__ == "__main__":
-    backtest_btc_sma_strategy()
+    backtest_stock_sma_strategy()
