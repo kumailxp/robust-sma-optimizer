@@ -5,6 +5,9 @@ from typing import Any
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import matplotlib
+# Set the backend to 'Agg' (A Graphics Group)
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -12,6 +15,27 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from random import randint, randrange
 from datetime import timedelta, datetime
 from backtest_plot_sma_strategy_result import backtest_stock_sma_strategy
+
+def read_file_to_list_efficiently(filename):
+    """
+    Reads a file line by line and saves the stripped content to a list.
+    """
+    lines_list = []
+    try:
+        # The 'with' statement ensures the file is closed automatically.
+        with open(filename, 'r') as file:
+            for line in file:
+                # Use .strip() to remove leading/trailing whitespace, 
+                # including the mandatory newline character (\n) at the end of each line.
+                lines_list.append(line.strip())
+        
+        return lines_list
+        
+    except FileNotFoundError:
+        print(f"Error: The file '{filename}' was not found.")
+        return []
+
+
 
 def random_date(start, end):
     """
@@ -118,6 +142,7 @@ def plot_ranges(data_range, max_sma, ticker, folder_name):
     for g in clustered_results:
         if len(g) > last_longest_len:
             best_cluster = g
+            last_longest_len = len(g)
         print(f"len: {len(g)}, data: {g}")
 
     if best_cluster:
@@ -273,7 +298,6 @@ def plot_all(ticker, folder_name):
     data_to_plot = []
 
     # 1. Configuration
-    ticker = "SAP"
     print(f"Fetching data for {ticker}...")
 
     minimum_start_date = "2014-01-01"
@@ -287,7 +311,7 @@ def plot_all(ticker, folder_name):
     )
     date_array = create_random_date_ranges(minimum_start_date, 50)
     futures = []
-    with ThreadPoolExecutor(max_workers=20) as executor:
+    with ThreadPoolExecutor(max_workers=1) as executor:
         for s_date, e_date in date_array:
             future = executor.submit(
                 backtest_sma_optimization, data, s_date, e_date, min_sma, max_sma
@@ -309,5 +333,6 @@ if __name__ == "__main__":
     os.makedirs(f"{folder_name}/best_smas", exist_ok=True)
     os.makedirs(f"{folder_name}/results", exist_ok=True)
 
-    ticker = "SAP"
-    plot_all(ticker, folder_name)
+    tickers = read_file_to_list_efficiently("ticker_list.txt")
+    for ticker in tickers:
+        plot_all(ticker, folder_name)
