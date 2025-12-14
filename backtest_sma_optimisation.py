@@ -336,7 +336,7 @@ def plot_all(ticker, folder_name):
 
     minimum_start_date = "2014-01-01"
     # Fetch data, starting earlier to ensure rolling mean calculation is stable
-    data = yf.download(
+    downloaded_data = yf.download(
         ticker,
         start=minimum_start_date,
         progress=False,
@@ -349,7 +349,7 @@ def plot_all(ticker, folder_name):
     with ThreadPoolExecutor(max_workers=1) as executor:
         for s_date, e_date in date_array:
             future = executor.submit(
-                backtest_sma_optimization, data, s_date, e_date, min_sma, max_sma
+                backtest_sma_optimization, downloaded_data, s_date, e_date, min_sma, max_sma
             )
             futures.append(future)
         for future in as_completed(futures):
@@ -360,7 +360,6 @@ def plot_all(ticker, folder_name):
     b_smas = plot_ranges(data_to_plot, max_sma, ticker, f"{folder_name}/best_smas")
     logger.info(f"Best of all SMAs: {b_smas}")
     if len(b_smas) != 0:
-        downloaded_data = fetch_data_from_yahoo(ticker, "2021-01-01")
         plot_all_strategies(ticker, "2021-01-01", "2025-06-01", downloaded_data, 1000, b_smas, f"{folder_name}/results")
 
 if __name__ == "__main__":
