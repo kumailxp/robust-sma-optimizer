@@ -5,14 +5,46 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def backtest_stock_sma_strategy(ticker, start_date, end_date, sma_period, folder_name):
-    # 1. Configuration
-    initial_capital = 1000  # Starting with $1,000
+def save_plot(ticker, start_date, end_date, folder_name):
 
+    plt.yscale('log')
+    plt.title(f'{ticker}: Buy & Hold vs SMA Strategies ({start_date} - {end_date})')
+    plt.ylabel('Portfolio Value (USD) - Log Scale')
+    plt.xlabel('Year')
+    plt.legend()
+    plt.grid(True, which="both", ls="-", alpha=0.2)
+
+    # Format Y-axis to show actual dollar amounts instead of scientific notation
+    from matplotlib.ticker import ScalarFormatter
+    plt.gca().yaxis.set_major_formatter(ScalarFormatter())
+
+    filename = f"sma_result_for_{ticker}.png"
+    save_path = os.path.join(folder_name, filename) # Joins folder_name and filename reliably
+    plt.savefig(save_path, format='png', dpi=300, bbox_inches='tight')
+    plt.close()
+
+def plot_strategy_graph(downloaded_data, start_date, end_date, sma_period, color, initial_capital):
+    data =  perform_sma_strategy(downloaded_data, start_date, end_date, sma_period, initial_capital)
+    final_strat = data['Strategy_Value'].iloc[-1]
+    if final_strat > initial_capital:
+        plt.plot(data.index, data['Strategy_Value'], label=f'SMA {sma_period} Strategy', color=color, linewidth=1.5)
+    return final_strat
+
+def plot_buy_and_hold(downloaded_data, start_date, end_date, initial_capital):
+    data = downloaded_data
+    data = data[(data.index >= start_date) & (data.index <= end_date)].copy()
+    data['Stock_Daily_Pct'] = data['Close'].pct_change()
+    data['Buy_Hold_Value'] = initial_capital * (1 + data['Stock_Daily_Pct']).cumprod()
+    plt.plot(data.index, data['Buy_Hold_Value'], label='Buy & Hold', color='gray', alpha=0.6)
+    final_bnh = data['Buy_Hold_Value'].iloc[-1]
+    return final_bnh
+
+
+def fetch_data_from_yahoo(ticker, start_date):
     print(f"Fetching data for {ticker}...")
     
     # We fetch data starting a few months early to allow the SMA calculation to stabilize before 2016
-    data = yf.download(ticker, start=start_date, progress=False)
+    data = yf.download(ticker, start=start_date, progress=False, auto_adjust=True)
 
     # Check if data was retrieved successfully
     if len(data) == 0:
@@ -22,8 +54,14 @@ def backtest_stock_sma_strategy(ticker, start_date, end_date, sma_period, folder
     # Handle potential MultiIndex columns in newer yfinance versions
     if isinstance(data.columns, pd.MultiIndex):
         data = data.xs(ticker, axis=1, level=1)
+    
+    return data
+
+def perform_sma_strategy(downloaded_data, start_date, end_date, sma_period, initial_capital):
 
     # 2. Calculate Indicators
+    data = downloaded_data
+
     data['SMA_X'] = data['Close'].rolling(window=sma_period).mean()
 
     # 3. Filter data betwen start and end
@@ -51,52 +89,46 @@ def backtest_stock_sma_strategy(ticker, start_date, end_date, sma_period, folder
 
     # 7. Calculate Cumulative Portfolio Value
     # Calculate cumulative product to see value growth over time
-    data['Buy_Hold_Value'] = initial_capital * (1 + data['Stock_Daily_Pct']).cumprod()
     data['Strategy_Value'] = initial_capital * (1 + data['Strategy_Daily_Pct']).cumprod()
 
     # Handle NaNs created by shifting/rolling
-    data['Buy_Hold_Value'] = data['Buy_Hold_Value'].fillna(initial_capital)
     data['Strategy_Value'] = data['Strategy_Value'].fillna(initial_capital)
 
-    # 8. Print Results
-    final_bnh = data['Buy_Hold_Value'].iloc[-1]
-    final_strat = data['Strategy_Value'].iloc[-1]
-    
+    return data
+
+def plot_all_strategies(ticker, start_date, end_date, downloaded_data, initial_capital, sma_periods, folder_name):
     print("-" * 40)
-    print(f"RESULTS ({start_date} to Today)")
+    print(f"RESULTS for {ticker} from {start_date} to {end_date}")
     print("-" * 40)
     print(f"Initial Investment: ${initial_capital:,.2f}")
+
+    sma_periods_with_colors = zip(sma_periods, ["red", "green"])
+
+    plt.figure(figsize=(12, 6))
+
+    final_bnh = plot_buy_and_hold(downloaded_data, start_date, end_date, initial_capital)
     print(f"Buy & Hold Final:   ${final_bnh:,.2f}")
-    print(f"SMA({sma_period}) Final:      ${final_strat:,.2f}")
-    print(f"Difference:         {(final_strat / final_bnh):.2f}x better performance")
+
+    for sma_period, color in sma_periods_with_colors:
+        if not sma_period:
+            continue
+        final_strat = plot_strategy_graph(downloaded_data, start_date, end_date, sma_period, color, initial_capital)
+        print(f"SMA({sma_period}) Final:      ${final_strat:,.2f}")
+        print(f"Difference:         {(final_strat / final_bnh):.2f}x better performance")
+    
+    save_plot(ticker, start_date, end_date, folder_name)
+    
     print("-" * 40)
 
-    # 9. Plotting
-    plt.figure(figsize=(12, 6))
-    
-    # Using Log Scale because growth might be exponential
-    # Without Log scale, the 2016-2020 price action would look like a flat line
-    plt.plot(data.index, data['Buy_Hold_Value'], label='Buy & Hold', color='gray', alpha=0.6)
-    plt.plot(data.index, data['Strategy_Value'], label=f'SMA {sma_period} Strategy', color='green', linewidth=1.5)
-
-    plt.yscale('log')
-    plt.title(f'{ticker}: Buy & Hold vs SMA({sma_period}) Strategy ({start_date} - {end_date})')
-    plt.ylabel('Portfolio Value (USD) - Log Scale')
-    plt.xlabel('Year')
-    plt.legend()
-    plt.grid(True, which="both", ls="-", alpha=0.2)
-    
-    # Format Y-axis to show actual dollar amounts instead of scientific notation
-    from matplotlib.ticker import ScalarFormatter
-    plt.gca().yaxis.set_major_formatter(ScalarFormatter())
-    
-    # plt.show()
-    filename = f"sma_result_for_{ticker}.png"
-    save_path = os.path.join(folder_name, filename) # Joins folder_name and filename reliably
-    plt.savefig(save_path, format='png', dpi=300, bbox_inches='tight')
-    plt.close()
 
 if __name__ == "__main__":
     folder_name = 'my_plots/results'
     os.makedirs(folder_name, exist_ok=True)
-    backtest_stock_sma_strategy("SAP", "2021-01-01", "2025-06-01", 105, folder_name)
+    start_date =  "2021-01-01"
+    end_date = "2025-06-01"
+    initial_capital = 1000
+    sma_periods = [32, 122]
+    ticker = "CRM"
+
+    downloaded_data = fetch_data_from_yahoo(ticker, start_date)
+    plot_all_strategies(ticker, start_date, end_date, downloaded_data, initial_capital, sma_periods, folder_name)

@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from random import randint, randrange
 from datetime import timedelta, datetime
-from backtest_plot_sma_strategy_result import backtest_stock_sma_strategy
+from backtest_plot_sma_strategy_result import plot_all_strategies, fetch_data_from_yahoo
 
 def read_file_to_list_efficiently(filename):
     """
@@ -135,18 +135,12 @@ def plot_ranges(data_range, max_sma, ticker, folder_name):
 
     list_of_all_smas = sorted(list_of_all_smas)
     clustered_results = group_nearby_values(list_of_all_smas, 10)
-    print("closly clustered smas:")
-    last_longest_len = 0
-    best_cluster = None
-    best_of_all_sma = None
-    for g in clustered_results:
-        if len(g) > last_longest_len:
-            best_cluster = g
-            last_longest_len = len(g)
-        print(f"len: {len(g)}, data: {g}")
-
-    if best_cluster:
-        best_of_all_sma = most_frequent(best_cluster)
+    clustered_results.sort(key=lambda f : len(f))
+    best_smas = []
+    for idx, g in enumerate(reversed(clustered_results)):
+         if idx == 2:
+             break
+         best_smas.append(most_frequent(g))
 
     plt.title(f"Good SMAs for {ticker}")
     plt.ylabel("Final Portfolio Value (USD)")
@@ -158,7 +152,7 @@ def plot_ranges(data_range, max_sma, ticker, folder_name):
     save_path = os.path.join(folder_name, filename) # Joins folder_name and filename reliably
     plt.savefig(save_path, format='png', dpi=300, bbox_inches='tight')
     plt.close()
-    return best_of_all_sma
+    return best_smas
     #plt.draw()
 
 
@@ -322,10 +316,11 @@ def plot_all(ticker, folder_name):
                 data_to_plot.append(future.result())
             except:
                 pass
-    b = plot_ranges(data_to_plot, max_sma, ticker, f"{folder_name}/best_smas")
-    print(f"Best of all SMAs: {b}")
-    if b:
-        backtest_stock_sma_strategy(ticker, "2021-01-01", "2025-06-01", b, f"{folder_name}/results")
+    b_smas = plot_ranges(data_to_plot, max_sma, ticker, f"{folder_name}/best_smas")
+    print(f"Best of all SMAs: {b_smas}")
+    if len(b_smas) != 0:
+        downloaded_data = fetch_data_from_yahoo(ticker, "2021-01-01")
+        plot_all_strategies(ticker, "2021-01-01", "2025-06-01", downloaded_data, 1000, b_smas, f"{folder_name}/results")
 
 if __name__ == "__main__":
 
