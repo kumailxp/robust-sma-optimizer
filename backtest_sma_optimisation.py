@@ -14,8 +14,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from random import randint, randrange
 from datetime import timedelta, datetime
-from backtest_plot_sma_strategy_result import plot_all_strategies, fetch_data_from_yahoo
+from backtest_plot_sma_strategy_result import plot_all_strategies
 import picologging as logging
+from rich.progress import Progress
 
 def initialise_logger():
     # 1. Define the Logger
@@ -344,19 +345,23 @@ def plot_all(ticker, folder_name):
         interval="1d",
         auto_adjust=True
     )
-    date_array = create_random_date_ranges(minimum_start_date, 50)
+    ranges_to_create = 50
+    date_array = create_random_date_ranges(minimum_start_date, ranges_to_create)
     futures = []
     with ThreadPoolExecutor(max_workers=1) as executor:
-        for s_date, e_date in date_array:
-            future = executor.submit(
-                backtest_sma_optimization, downloaded_data, s_date, e_date, min_sma, max_sma
-            )
-            futures.append(future)
-        for future in as_completed(futures):
-            try:
-                data_to_plot.append(future.result())
-            except:
-                pass
+        with Progress() as progress:
+            task1 = progress.add_task(f"Analysing {ticker}", total=ranges_to_create)
+            for s_date, e_date in date_array:
+                future = executor.submit(
+                    backtest_sma_optimization, downloaded_data, s_date, e_date, min_sma, max_sma
+                )
+                futures.append(future)
+            for future in as_completed(futures):
+                try:
+                    data_to_plot.append(future.result())
+                    progress.update(task1, advance=1)
+                except:
+                    pass
     b_smas = plot_ranges(data_to_plot, max_sma, ticker, f"{folder_name}/best_smas")
     logger.info(f"Best of all SMAs: {b_smas}")
     if len(b_smas) != 0:
