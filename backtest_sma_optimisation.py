@@ -31,7 +31,7 @@ def initialise_logger():
 
     # 3. Define the FileHandler
     LOG_FILE_NAME = 'app.log'
-    file_handler = logging.FileHandler(LOG_FILE_NAME, mode='a') # 'a' for append mode
+    file_handler = logging.FileHandler(LOG_FILE_NAME, mode='w')
     file_handler.setLevel(logging.DEBUG) # File handler logs DEBUG and above
     file_handler.setFormatter(formatter)
 
@@ -363,7 +363,6 @@ def plot_all(ticker, folder_name):
         plot_all_strategies(ticker, "2021-01-01", "2025-06-01", downloaded_data, 1000, b_smas, f"{folder_name}/results")
 
 if __name__ == "__main__":
-
     folder_name = "my_plots"
     os.makedirs(f"{folder_name}/best_smas", exist_ok=True)
     os.makedirs(f"{folder_name}/results", exist_ok=True)
