@@ -41,8 +41,6 @@ def plot_buy_and_hold(downloaded_data, start_date, end_date, initial_capital):
 
 
 def fetch_data_from_yahoo(ticker, start_date):
-    print(f"Fetching data for {ticker}...")
-    
     # We fetch data starting a few months early to allow the SMA calculation to stabilize before 2016
     data = yf.download(ticker, start=start_date, progress=False, auto_adjust=True)
 

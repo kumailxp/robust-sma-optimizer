@@ -84,3 +84,6 @@ ehthumbs.db
 .vscode/
 
 my_plots/
+
+#log files
+*.log

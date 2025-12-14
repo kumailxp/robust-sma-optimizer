@@ -15,7 +15,47 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from random import randint, randrange
 from datetime import timedelta, datetime
 from backtest_plot_sma_strategy_result import plot_all_strategies, fetch_data_from_yahoo
+import picologging as logging
 
+def initialise_logger():
+    # 1. Define the Logger
+    # Get a logger instance, usually named after the module or 'root'
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG) # Set the minimum level to capture (DEBUG and above)
+
+    # 2. Define the Formatter (how the log line looks)
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+    # 3. Define the FileHandler
+    LOG_FILE_NAME = 'app.log'
+    file_handler = logging.FileHandler(LOG_FILE_NAME, mode='a') # 'a' for append mode
+    file_handler.setLevel(logging.DEBUG) # File handler logs DEBUG and above
+    file_handler.setFormatter(formatter)
+
+    # 4. Add the FileHandler to the Logger
+    logger.addHandler(file_handler)
+
+    # --- (Optional: Add a StreamHandler for console output) ---
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.CRITICAL) # Console only logs INFO and above
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+    # -----------------------------------------------------------
+
+    # Log some messages
+    # logger.debug('This debug message goes to the file, but not the console.')
+    # logger.info('This info message goes to both the file and the console.')
+    # logger.warning('A warning occurred!')
+    # logger.critical('The system is shutting down.')
+
+    # print(f"\nLog messages written to {LOG_FILE_NAME} and the console.")
+    return logger
+
+
+logger = initialise_logger()
 def read_file_to_list_efficiently(filename):
     """
     Reads a file line by line and saves the stripped content to a list.
@@ -32,7 +72,7 @@ def read_file_to_list_efficiently(filename):
         return lines_list
         
     except FileNotFoundError:
-        print(f"Error: The file '{filename}' was not found.")
+        logger.info(f"Error: The file '{filename}' was not found.")
         return []
 
 
@@ -65,7 +105,7 @@ def create_random_date_ranges(minimum_start_date, ranges_to_create):
             year=sd.year + rand_end_year, month=randint(1, 10), day=randint(1, 28)
         )
         end_date_as_str = end_date.strftime("%Y-%m-%d")
-        print(f"start date: {start_date_as_str}, end_date: {end_date_as_str}")
+        logger.info(f"start date: {start_date_as_str}, end_date: {end_date_as_str}")
         results.append((start_date_as_str, end_date_as_str))
     return results
 
@@ -171,13 +211,13 @@ def get_best_moving_avgs(results, final_bnh, start_date, end_date):
                 final_smas[sma] = roi
                 break
 
-    print("-" * 50)
-    print(f"HODL: ${final_bnh:,.2f} from {start_date} to {end_date}")
+    logger.info("-" * 50)
+    logger.info(f"HODL: ${final_bnh:,.2f} from {start_date} to {end_date}")
     for i in range(len(final_smas)):
-        print(
+        logger.info(
             f"Good SMA: {final_smas.index[i]}, ROI: ${final_smas.iloc[i]:,.2f}, Ratio (roi/hodl): {final_smas.iloc[i]/final_bnh:.2f}"
         )
-    print("-" * 50)
+    logger.info("-" * 50)
     return final_smas
 
 
@@ -225,10 +265,10 @@ def backtest_sma_optimization(data, start_date, end_date, min_sma, max_sma):
     # 1. Configuration
     initial_capital = 1000
 
-    print(f"Fetching data for {ticker}...")
+    logger.info(f"Fetching data for {ticker}...")
 
     if len(data) == 0:
-        print("Error: No data found.")
+        logger.info("Error: No data found.")
         return
 
     # Prepare results storage
@@ -244,9 +284,9 @@ def backtest_sma_optimization(data, start_date, end_date, min_sma, max_sma):
 
     final_bnh = data_filtered["Buy_Hold_Value"].iloc[-1]
 
-    print(f"Buy & Hold Final Value: ${final_bnh:,.2f}")
-    print("-" * 50)
-    print(f"Starting simulation for SMA periods {min_sma} to {max_sma}...")
+    logger.info(f"Buy & Hold Final Value: ${final_bnh:,.2f}")
+    logger.info("-" * 50)
+    logger.info(f"Starting simulation for SMA periods {min_sma} to {max_sma}...")
 
     # 2. Loop Through All SMA Periods
     for sma_period in range(min_sma, max_sma + 1):
@@ -281,7 +321,7 @@ def backtest_sma_optimization(data, start_date, end_date, min_sma, max_sma):
             results[sma_period] = final_strat_value
 
         if sma_period % 100 == 0:
-            print(f"Completed SMA {sma_period}...")
+            logger.info(f"Completed SMA {sma_period}...")
 
     return (results, final_bnh, start_date, end_date)
 
@@ -292,7 +332,7 @@ def plot_all(ticker, folder_name):
     data_to_plot = []
 
     # 1. Configuration
-    print(f"Fetching data for {ticker}...")
+    logger.info(f"Fetching data for {ticker}...")
 
     minimum_start_date = "2014-01-01"
     # Fetch data, starting earlier to ensure rolling mean calculation is stable
@@ -302,6 +342,7 @@ def plot_all(ticker, folder_name):
         progress=False,
         multi_level_index=False,
         interval="1d",
+        auto_adjust=True
     )
     date_array = create_random_date_ranges(minimum_start_date, 50)
     futures = []
@@ -317,7 +358,7 @@ def plot_all(ticker, folder_name):
             except:
                 pass
     b_smas = plot_ranges(data_to_plot, max_sma, ticker, f"{folder_name}/best_smas")
-    print(f"Best of all SMAs: {b_smas}")
+    logger.info(f"Best of all SMAs: {b_smas}")
     if len(b_smas) != 0:
         downloaded_data = fetch_data_from_yahoo(ticker, "2021-01-01")
         plot_all_strategies(ticker, "2021-01-01", "2025-06-01", downloaded_data, 1000, b_smas, f"{folder_name}/results")
