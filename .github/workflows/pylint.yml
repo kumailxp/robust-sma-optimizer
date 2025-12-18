@@ -25,5 +25,5 @@ jobs:
     - name: add readme
     - uses: Silleellie/pylint-github-action@v2.1
       with:
-        lint-path: backtest_sma_optimisation.py
+        lint-path: backtest_sfma_optimisation.py
         python-version: 3.11
