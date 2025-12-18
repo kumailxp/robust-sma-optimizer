@@ -1,3 +1,6 @@
+
+![pylint]()
+
 # SMA Strategy Backtester and Optimizer
 
 A professional Python-based tool for simulating and optimizing Simple Moving Average (SMA) trading strategies. This script uses a "training and testing" approach: it runs multiple simulations across random historical windows to find the most robust SMA periods, then validates those findings against a modern testing dataset.
