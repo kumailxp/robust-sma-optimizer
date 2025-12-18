@@ -1,0 +1,6 @@
+yfinance==0.2.66
+numpy==2.2.6
+pandas==2.3.1
+matplotlib==3.10.7
+picologging
+rich

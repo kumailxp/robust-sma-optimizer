@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import math
 import os
 from typing import Any
@@ -17,6 +17,8 @@ from datetime import timedelta, datetime
 from backtest_plot_sma_strategy_result import plot_all_strategies
 import picologging as logging
 from rich.progress import Progress
+from rich_argparse import RichHelpFormatter
+import argparse
 
 def initialise_logger():
     # 1. Define the Logger
@@ -307,7 +309,7 @@ def backtest_sma_optimization(data, start_date, end_date, min_sma, max_sma):
     return (results, final_bnh, start_date, end_date)
 
 
-def plot_all(ticker, folder_name):
+def plot_all(ticker, folder_name, ranges_to_create, start_date, end_date):
     min_sma = 1
     max_sma = 200
     data_to_plot = []
@@ -325,7 +327,6 @@ def plot_all(ticker, folder_name):
         interval="1d",
         auto_adjust=True
     )
-    ranges_to_create = 50
     date_array = create_random_date_ranges(minimum_start_date, ranges_to_create)
     futures = []
     with ThreadPoolExecutor(max_workers=1) as executor:
@@ -345,13 +346,27 @@ def plot_all(ticker, folder_name):
     b_smas = plot_ranges(data_to_plot, max_sma, ticker, f"{folder_name}/best_smas")
     logger.info(f"Best of all SMAs: {b_smas}")
     if len(b_smas) != 0:
-        plot_all_strategies(ticker, "2021-01-01", "2025-06-01", downloaded_data, 1000, b_smas, f"{folder_name}/results")
+        plot_all_strategies(ticker, start_date, end_date, downloaded_data, 1000, b_smas, f"{folder_name}/results")
 
 if __name__ == "__main__":
+
+    description_str =  """
+    \033[38;5;208mDescription:\033[0m
+    Simulate sma strategy and backtest the best smas.
+    Training dataset is from 2014-01-01 to 2021-01-01.
+    Default testing dataset is from 2021-01-01 to 2025-06-01, 
+    but the user can change this using the --start-date and --end-date flags.
+    """
+    parser = argparse.ArgumentParser(description=description_str, formatter_class=RichHelpFormatter)
+    parser.add_argument("-t", "--ticker", nargs='+', help="ticker symbol")
+    parser.add_argument("-s", "--number-of-simulations", help="number of simulations to run (default: 50)", type=int, default=50)
+    parser.add_argument("--start-date", help="start date for testing dataset", type=str, default="2021-01-01")
+    parser.add_argument("--end-date", help="end date for testing dataset", type=str, default="2025-06-01")
     folder_name = "my_plots"
     os.makedirs(f"{folder_name}/best_smas", exist_ok=True)
     os.makedirs(f"{folder_name}/results", exist_ok=True)
 
-    tickers = read_file_to_list_efficiently("ticker_list.txt")
+    args = parser.parse_args()
+    tickers = args.ticker if args.ticker else read_file_to_list_efficiently("ticker_list.txt")
     for ticker in tickers:
-        plot_all(ticker, folder_name)
+        plot_all(ticker, folder_name, args.number_of_simulations, args.start_date, args.end_date)
