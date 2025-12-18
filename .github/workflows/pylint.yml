@@ -22,3 +22,7 @@ jobs:
     - name: Analysing the code with pylint
       run: |
         pylint -d R0913,R0917,R0914,E1136 $(git ls-files '*.py')
+    - uses: Silleellie/pylint-github-action@v2.1
+      with:
+        lint-path: backtest_sma_optimisation.py
+        python-version: 3.11
