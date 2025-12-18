@@ -36,23 +36,13 @@ def initialise_logger():
     file_handler.setLevel(logging.DEBUG) # File handler logs DEBUG and above
     file_handler.setFormatter(formatter)
 
-    # 4. Add the FileHandler to the Logger
     logger.addHandler(file_handler)
 
-    # --- (Optional: Add a StreamHandler for console output) ---
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.CRITICAL) # Console only logs INFO and above
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
-    # -----------------------------------------------------------
 
-    # Log some messages
-    # logger.debug('This debug message goes to the file, but not the console.')
-    # logger.info('This info message goes to both the file and the console.')
-    # logger.warning('A warning occurred!')
-    # logger.critical('The system is shutting down.')
-
-    # print(f"\nLog messages written to {LOG_FILE_NAME} and the console.")
     return logger
 
 
@@ -63,11 +53,8 @@ def read_file_to_list_efficiently(filename):
     """
     lines_list = []
     try:
-        # The 'with' statement ensures the file is closed automatically.
         with open(filename, 'r') as file:
             for line in file:
-                # Use .strip() to remove leading/trailing whitespace, 
-                # including the mandatory newline character (\n) at the end of each line.
                 lines_list.append(line.strip())
         
         return lines_list
@@ -194,7 +181,6 @@ def plot_ranges(data_range, max_sma, ticker, folder_name):
     plt.savefig(save_path, format='png', dpi=300, bbox_inches='tight')
     plt.close()
     return best_smas
-    #plt.draw()
 
 
 def get_best_moving_avgs(results, final_bnh, start_date, end_date):
@@ -223,12 +209,6 @@ def get_best_moving_avgs(results, final_bnh, start_date, end_date):
 
 
 def plot_best_sma(final_smas, color_name):
-    # plt.annotate(f"${final_bnh:,.0f}", # this is the text
-    #              (200,final_bnh), # these are the coordinates to position the label
-    #              ha='left', color=color_name) # horizontal alignment can be left, right or center
-
-    # transparent_color_2 = list(mcolors.to_rgba(color_name))
-    # transparent_color_2[3] = 0.7
 
     for i in range(len(final_smas)):
         plt.plot(
